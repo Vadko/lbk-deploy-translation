@@ -70,16 +70,16 @@ jobs:
 | `game-id` | ✓ | — | UUID гри |
 | `version` | ✓ | — | Версія перекладу (вільний формат) |
 | `base-url` |  | `https://admin.lbklauncher.com` | LBK API base URL |
-| `archive` |  | — | Шлях до основного `.zip` |
+| `archive` | ✓ | — | Шлях до основного `.zip` |
 | `voice` |  | — | Озвучка `.zip` |
 | `achievements` |  | — | Досягнення `.zip` |
 | `epic` / `gog` / `xbox` |  | — | Store-specific варіанти |
 | `steam-linux` / `steam-mac` |  | — | OS-specific варіанти Steam |
-| `status` |  | — | `completed` / `in-progress` / `tech-improvement` / `planned` |
+| `status` |  | — | `completed` / `in-progress` / `tech-improvement` |
 | `translation-progress` |  | — | 0–100 |
 | `editing-progress` |  | — | 0–100 |
 
-Хоча б один з archive-input'ів (`archive`, `voice`, ...) обов'язковий.
+Основний `archive` обов'язковий. Інші kind'и (voice/achievements/store-specific) — опційні, додавай як потрібно.
 
 ## Outputs
 

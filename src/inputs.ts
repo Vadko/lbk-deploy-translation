@@ -60,17 +60,19 @@ const InputsSchema = z.object({
     (v) => (typeof v === 'string' && v ? v.replace(/\/+$/, '') : 'https://admin.lbklauncher.com'),
     z.url()
   ),
+  // `planned` навмисно виключений — він не передбачає upload архіву,
+  // а цей action завжди постачає файл. Сервер також reject'ить planned для
+  // submit-via-token API.
   status: z
-    .enum(['completed', 'in-progress', 'tech-improvement', 'planned'])
+    .enum(['completed', 'in-progress', 'tech-improvement'])
     .optional()
     .or(z.literal('').transform(() => undefined)),
   translationProgress: percent,
   editingProgress: percent,
   files: z
     .map(z.enum(UPLOAD_KINDS), z.string().min(1))
-    .refine((m) => m.size > 0, {
-      message:
-        'At least one of: archive, voice, achievements, epic, gog, xbox, steam-linux, steam-mac must be provided.',
+    .refine((m) => m.has('archive'), {
+      message: 'Main `archive` input is required (other kinds — voice/achievements/store-specific — are optional).',
     }),
 });
 

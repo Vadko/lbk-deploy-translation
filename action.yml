@@ -20,11 +20,10 @@ inputs:
     required: false
     default: 'https://admin.lbklauncher.com'
 
-  # Archive paths — at least one required. Empty string means "skip this kind".
+  # Main archive — required. Optional kinds below.
   archive:
-    description: 'Path to main translation .zip'
-    required: false
-    default: ''
+    description: 'Path to main translation .zip (required)'
+    required: true
   voice:
     description: 'Path to voice .zip'
     required: false
@@ -56,7 +55,7 @@ inputs:
 
   # Optional metadata
   status:
-    description: 'Translation status: completed | in-progress | tech-improvement | planned'
+    description: 'Translation status: completed | in-progress | tech-improvement'
     required: false
     default: ''
   translation-progress:

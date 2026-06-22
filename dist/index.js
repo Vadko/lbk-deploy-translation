@@ -52057,14 +52057,17 @@ const InputsSchema = object({
     gameId: schemas_uuid('expected UUID'),
     version: schemas_string().min(1, 'empty string not allowed'),
     baseUrl: preprocess((v) => (typeof v === 'string' && v ? v.replace(/\/+$/, '') : 'https://admin.lbklauncher.com'), url()),
-    status: schemas_enum(['completed', 'in-progress', 'tech-improvement', 'planned'])
+    // `planned` навмисно виключений — він не передбачає upload архіву,
+    // а цей action завжди постачає файл. Сервер також reject'ить planned для
+    // submit-via-token API.
+    status: schemas_enum(['completed', 'in-progress', 'tech-improvement'])
         .optional()
         .or(literal('').transform(() => undefined)),
     translationProgress: percent,
     editingProgress: percent,
     files: map(schemas_enum(UPLOAD_KINDS), schemas_string().min(1))
-        .refine((m) => m.size > 0, {
-        message: 'At least one of: archive, voice, achievements, epic, gog, xbox, steam-linux, steam-mac must be provided.',
+        .refine((m) => m.has('archive'), {
+        message: 'Main `archive` input is required (other kinds — voice/achievements/store-specific — are optional).',
     }),
 });
 function parseInputs() {
