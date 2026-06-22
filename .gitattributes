@@ -1,0 +1,2 @@
+# Keep bundled output out of the diff to reduce review noise.
+dist/** linguist-generated=true

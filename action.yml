@@ -1,0 +1,77 @@
+name: 'LBK Deploy Translation'
+description: 'Upload translation archive(s) to LBK Launcher via the public API'
+author: 'Vadko'
+branding:
+  icon: 'upload-cloud'
+  color: 'orange'
+
+inputs:
+  api-token:
+    description: 'LBK API token (lbk_...) — store in secrets.LBK_API_TOKEN'
+    required: true
+  game-id:
+    description: 'UUID of the game. Get via GET /api/submit-via-token/games once'
+    required: true
+  version:
+    description: 'Translation version (e.g. "1.1" or "2024.03.15")'
+    required: true
+  base-url:
+    description: 'LBK API base URL'
+    required: false
+    default: 'https://admin.lbklauncher.com'
+
+  # Archive paths — at least one required. Empty string means "skip this kind".
+  archive:
+    description: 'Path to main translation .zip'
+    required: false
+    default: ''
+  voice:
+    description: 'Path to voice .zip'
+    required: false
+    default: ''
+  achievements:
+    description: 'Path to achievements .zip'
+    required: false
+    default: ''
+  epic:
+    description: 'Path to Epic-store-specific .zip'
+    required: false
+    default: ''
+  gog:
+    description: 'Path to GOG-store-specific .zip'
+    required: false
+    default: ''
+  xbox:
+    description: 'Path to Xbox-store-specific .zip'
+    required: false
+    default: ''
+  steam-linux:
+    description: 'Path to Steam Linux .zip'
+    required: false
+    default: ''
+  steam-mac:
+    description: 'Path to Steam macOS .zip'
+    required: false
+    default: ''
+
+  # Optional metadata
+  status:
+    description: 'Translation status: completed | in-progress | tech-improvement | planned'
+    required: false
+    default: ''
+  translation-progress:
+    description: 'Translation completeness percentage (0-100)'
+    required: false
+    default: ''
+  editing-progress:
+    description: 'Editing completeness percentage (0-100)'
+    required: false
+    default: ''
+
+outputs:
+  game-id:
+    description: 'Echoes back the gameId that was updated'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

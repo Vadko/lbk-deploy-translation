@@ -1,0 +1,35 @@
+{
+  "name": "lbk-deploy-translation",
+  "version": "1.0.0",
+  "description": "GitHub Action to deploy translation archives to LBK Launcher",
+  "main": "dist/index.js",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "ncc build src/index.ts --out dist --source-map --license licenses.txt",
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:local": "local-action . src/main.ts .env",
+    "all": "pnpm lint && pnpm test && pnpm build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": ["github-actions", "lbk", "translation", "ukrainian"],
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^3.0.1",
+    "axios": "^1.18.1",
+    "p-map": "^7.0.4",
+    "pretty-bytes": "^7.1.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@github/local-action": "^7.0.1",
+    "@types/node": "^26.0.0",
+    "@vercel/ncc": "^0.44.0",
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.9"
+  }
+}

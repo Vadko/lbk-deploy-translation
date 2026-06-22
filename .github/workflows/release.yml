@@ -1,0 +1,96 @@
+name: Release
+
+# Two coupled jobs:
+#   1. auto-build  — rebuilds dist/ on every push to main; commits if changed
+#   2. release-please — maintains a Release PR; on merge creates tag + bumps `vN`
+#
+# `release-please` waits for `auto-build` so the tag never points at stale dist.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Serialize runs so simultaneous pushes don't race over dist commits.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  auto-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - name: Commit dist/ if changed
+        run: |
+          if [ -z "$(git status --porcelain dist)" ]; then
+            echo "dist/ is up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist
+          git commit -m "chore: auto-build dist [skip ci]"
+          git push
+
+  release-please:
+    needs: auto-build
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+      major: ${{ steps.rp.outputs.major }}
+    steps:
+      # Pull latest main — picks up the dist commit auto-build may have just made.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: googleapis/release-please-action@v4
+        id: rp
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # Move the `vN` (major) movable tag to the new release, so users that pin
+  # `uses: …@v1` always get the latest 1.x.x build automatically.
+  bump-major-tag:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Move v${{ needs.release-please.outputs.major }} tag
+        env:
+          MAJOR: ${{ needs.release-please.outputs.major }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f "v${MAJOR}" "${TAG}"
+          git push -f origin "v${MAJOR}"

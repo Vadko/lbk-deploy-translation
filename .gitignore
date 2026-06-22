@@ -1,0 +1,10 @@
+node_modules/
+*.log
+.DS_Store
+.idea/
+.vscode/
+
+# Local test config — contains real token, never commit
+.env
+
+# dist/ IS committed — required by GitHub Actions runtime.
