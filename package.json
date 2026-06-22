@@ -1,6 +1,6 @@
 {
   "name": "lbk-deploy-translation",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "GitHub Action to deploy translation archives to LBK Launcher",
   "main": "dist/index.js",
   "type": "module",
@@ -15,7 +15,12 @@
   "engines": {
     "node": ">=20"
   },
-  "keywords": ["github-actions", "lbk", "translation", "ukrainian"],
+  "keywords": [
+    "github-actions",
+    "lbk",
+    "translation",
+    "ukrainian"
+  ],
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^3.0.1",
