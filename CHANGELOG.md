@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/Vadko/lbk-deploy-translation/compare/v1.1.1...v1.2.0) (2026-06-23)
+
+
+### Features
+
+* tus upload ([1759094](https://github.com/Vadko/lbk-deploy-translation/commit/1759094ae6a22d7c5e9b951dda7da5d3c110cab8))
+
 ## [1.1.1](https://github.com/Vadko/lbk-deploy-translation/compare/v1.1.0...v1.1.1) (2026-06-22)
 
 
