@@ -3,8 +3,6 @@
 GitHub Action для деплою перекладів у [LBK Launcher](https://admin.lbklauncher.com) через
 [публічне API](https://admin.lbklauncher.com/api-docs).
 
-Замість 30+ рядків `curl`/`jq` бойлерплейту — один step:
-
 ```yaml
 - uses: Vadko/lbk-deploy-translation@v1
   with:
@@ -20,7 +18,7 @@ GitHub Action для деплою перекладів у [LBK Launcher](https:/
 
 ### 1. Створи API-токен
 
-Зайди в [/settings](https://admin.lbklauncher.com/settings) → секція **API токени** →
+Зайди в [/settings](https://admin.lbklauncher.com/settings) → розділ **API токени** →
 **Створити токен**. Токен формату `lbk_<43-char base64url>` показується один раз.
 
 ### 2. Збережи в repo
@@ -73,27 +71,27 @@ jobs:
 | `archive` | ✓ | — | Шлях до основного `.zip` |
 | `voice` |  | — | Озвучка `.zip` |
 | `achievements` |  | — | Досягнення `.zip` |
-| `epic` / `gog` / `xbox` |  | — | Store-specific варіанти |
-| `steam-linux` / `steam-mac` |  | — | OS-specific варіанти Steam |
+| `epic` / `gog` / `xbox` |  | — | Варіанти для конкретних крамниць |
+| `steam-linux` / `steam-mac` |  | — | Варіанти Steam для конкретних ОС |
 | `status` |  | — | `completed` / `in-progress` / `tech-improvement` |
 | `translation-progress` |  | — | 0–100 |
 | `editing-progress` |  | — | 0–100 |
 
-Основний `archive` обов'язковий. Інші kind'и (voice/achievements/store-specific) — опційні, додавай як потрібно.
+Основний `archive` обов'язковий. Інші kind'и (voice/achievements/для конкретних крамниць) — необов'язкові, додавай як потрібно.
 
 ## Outputs
 
 | Output | Опис |
 |---|---|
-| `game-id` | UUID гри що оновлено (для chain'у з наступними step'ами) |
+| `game-id` | UUID гри що оновлено (для зв'язки з наступними кроками) |
 
 ## Як це працює
 
 Action виконує три кроки публічного API:
 
-1. **`POST /api/submit-via-token/uploads`** — запитує signed URL для кожного `kind`
-2. **`PUT` на кожен signedUrl** — паралельно стрімить файли (streaming, OOM-safe для 10ГБ)
-3. **`PUT /api/submit-via-token/games/{gameId}`** — submit метаданих
+1. **`POST /api/submit-via-token/uploads`** — запитує підписаний URL для кожного `kind`
+2. **`PUT` на кожен `signedUrl`** — паралельно передає файли по частинах, без буферизації всього архіву в пам'ять (безпечно для архівів до 10 ГБ)
+3. **`PUT /api/submit-via-token/games/{gameId}`** — подача метаданих
 
 Помилка на будь-якому кроці → `core.setFailed()` з повним описом від сервера.
 
@@ -105,9 +103,6 @@ pnpm lint   # tsc --noEmit
 pnpm test   # vitest
 pnpm build  # ncc → dist/index.js
 ```
-
-`dist/` **закомічений** — це вимога GitHub Actions runtime (нема `npm install`
-в момент виконання). CI блокує merge якщо `dist/` застарілий.
 
 ## Ліцензія
 
