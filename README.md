@@ -89,9 +89,9 @@ jobs:
 
 Action виконує три кроки публічного API:
 
-1. **`POST /api/submit-via-token/uploads`** — запитує підписаний URL для кожного `kind`
-2. **`PUT` на кожен `signedUrl`** — паралельно передає файли по частинах, без буферизації всього архіву в пам'ять (безпечно для архівів до 10 ГБ)
-3. **`PUT /api/submit-via-token/games/{gameId}`** — подача метаданих
+1. **`POST /api/submit-via-token/uploads`** — запитує для кожного `kind` набір TUS-параметрів (`tusEndpoint`, `bucketName`, `objectName`, підпис).
+2. **TUS upload через [`tus-js-client`](https://github.com/tus/tus-js-client)** — паралельно для всіх kind'ів. Файл ріжеться на 6 МБ chunks і завантажується по частинах: жоден архів не буферизується цілком у пам'яті (безпечно для архівів до 10 ГБ), а при обриві мережі клієнт продовжує з потрібного байта замість починати з нуля. Авторизація — через `x-signature` header з підписом від сервера, без потреби у Supabase JWT.
+3. **`PUT /api/submit-via-token/games/{gameId}`** — подача метаданих.
 
 Помилка на будь-якому кроці → `core.setFailed()` з повним описом від сервера.
 
