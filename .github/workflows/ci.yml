@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  lint:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +20,19 @@ jobs:
           node-version: 20
           cache: 'pnpm'
 
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      # Tests, once we add them:
-      # - run: pnpm test
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Run as separate steps so the GitHub Actions UI shows each check
+      # individually — failing biome shouldn't read as "typecheck failed".
+      - name: Typecheck (tsc)
+        run: pnpm typecheck
+
+      - name: Lint + format (biome)
+        run: pnpm biome:check
+
+      - name: Tests (vitest)
+        run: pnpm test
+
+      - name: Build (ncc)
+        run: pnpm build

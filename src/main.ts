@@ -1,5 +1,5 @@
-import * as core from '@actions/core';
 import { statSync } from 'node:fs';
+import * as core from '@actions/core';
 import pMap from 'p-map';
 import prettyBytes from 'pretty-bytes';
 import { createApiClient } from './api';
@@ -43,8 +43,8 @@ export async function run(): Promise<void> {
           // Defensive: server only returns URLs for kinds we asked for.
           throw new Error(`Server returned URL for unknown kind: ${u.kind}`);
         }
-        core.info(`${u.kind} → PUT`);
-        await api.uploadFile(u.signedUrl, path);
+        core.info(`${u.kind} → TUS upload`);
+        await api.uploadFile(u, path);
         core.info(`${u.kind} ✓`);
       },
       // 8 max in parallel = max number of kinds. No throttling needed; we
@@ -72,4 +72,3 @@ export async function run(): Promise<void> {
     core.setFailed(e instanceof Error ? e.message : String(e));
   }
 }
-

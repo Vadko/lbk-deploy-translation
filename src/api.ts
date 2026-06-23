@@ -1,11 +1,25 @@
-import axios, { type AxiosInstance } from 'axios';
 import { createReadStream, statSync } from 'node:fs';
+import axios, { type AxiosInstance } from 'axios';
+import * as tus from 'tus-js-client';
 import type { UploadKind } from './inputs';
 
+/**
+ * One entry per kind in the response of POST /api/submit-via-token/uploads.
+ * The token API accepts both flows:
+ *   - **TUS (recommended)** — resumable upload via tus-js-client. Use
+ *     `tusEndpoint` + `headers['x-signature']: token` + the bucketName/objectName
+ *     metadata. Recovers from network drops mid-upload.
+ *   - **Legacy single-shot PUT** — single HTTP PUT to `signedUrl`. No resume.
+ * We use TUS exclusively in this action — it's strictly better for the
+ * multi-GB archives this tool typically uploads.
+ */
 interface SignedUpload {
   kind: UploadKind;
-  signedUrl: string;
+  tusEndpoint: string;
+  bucketName: string;
+  objectName: string;
   token: string;
+  signedUrl: string;
 }
 
 interface UploadsResponse {
@@ -29,7 +43,7 @@ interface ErrorBody {
 
 export interface ApiClient {
   requestSignedUploadUrls(args: SignedUrlsArgs): Promise<SignedUpload[]>;
-  uploadFile(signedUrl: string, filePath: string): Promise<void>;
+  uploadFile(upload: SignedUpload, filePath: string): Promise<void>;
   submitMetadata(args: SubmitArgs): Promise<SubmitResponse>;
 }
 
@@ -45,10 +59,16 @@ export interface SubmitArgs extends SignedUrlsArgs {
   editingProgress?: number;
 }
 
+// Supabase TUS implementation requires exactly 6 MiB chunks.
+const TUS_CHUNK_SIZE = 6 * 1024 * 1024;
+
+// Retry on transient network drops. Each value = ms delay before next attempt.
+// 10 attempts up to ~1 minute backoff matches the admin web client.
+const TUS_RETRY_DELAYS = [0, 1000, 3000, 5000, 10000, 15000, 20000, 30000, 45000, 60000];
+
 export function createApiClient(baseUrl: string, apiToken: string): ApiClient {
-  // Single axios instance for the authenticated JSON endpoints. Uploads go
-  // to signed URLs on a different origin (R2) and need their own per-request
-  // config — they bypass this instance.
+  // Single axios instance for the authenticated JSON endpoints. TUS uploads
+  // go to Supabase Storage on a different origin and use their own auth.
   const api: AxiosInstance = axios.create({
     baseURL: baseUrl,
     headers: { Authorization: `Bearer ${apiToken}` },
@@ -66,26 +86,52 @@ export function createApiClient(baseUrl: string, apiToken: string): ApiClient {
         args
       );
       const data = ensureOk<UploadsResponse>(resp, '/api/submit-via-token/uploads');
-      if (!data.uploads) throw new Error('Server returned success but no signed uploads');
+      if (!data.uploads) throw new Error('Server returned success but no uploads');
+      // Defensive guard for older server builds — bail early instead of
+      // calling tus.Upload with undefined fields.
+      for (const u of data.uploads) {
+        if (!u.tusEndpoint || !u.bucketName || !u.objectName || !u.token) {
+          throw new Error(
+            `Server returned upload entry without TUS fields for kind=${u.kind}. ` +
+              'Server may be older than the lbk-deploy-translation v1.2+ contract.'
+          );
+        }
+      }
       return data.uploads;
     },
 
-    async uploadFile(signedUrl, filePath) {
-      const size = statSync(filePath).size;
+    async uploadFile(upload, filePath) {
+      const stats = statSync(filePath);
+      // tus-js-client wants the stream + the total size to know when it's done.
       const stream = createReadStream(filePath);
       try {
-        const resp = await axios.put(signedUrl, stream, {
-          headers: {
-            'Content-Type': 'application/zip',
-            'Content-Length': String(size),
-          },
-          maxContentLength: Infinity,
-          maxBodyLength: Infinity,
-          timeout: 2 * 60 * 60 * 1000, // 2h cap, matches client TUS uploadTimeout
-          validateStatus: (s) => s >= 200 && s < 300,
+        await new Promise<void>((resolve, reject) => {
+          const tusUpload = new tus.Upload(stream, {
+            endpoint: upload.tusEndpoint,
+            uploadSize: stats.size,
+            chunkSize: TUS_CHUNK_SIZE,
+            retryDelays: TUS_RETRY_DELAYS,
+            uploadDataDuringCreation: true,
+            // No persistent fingerprinting in CI — each run starts fresh.
+            removeFingerprintOnSuccess: true,
+            headers: {
+              // `x-signature` carries the token from createSignedUploadUrl;
+              // Supabase accepts this in place of a Bearer JWT for resumable
+              // uploads. `x-upsert` lets a retry overwrite a partial blob.
+              'x-signature': upload.token,
+              'x-upsert': 'true',
+            },
+            metadata: {
+              bucketName: upload.bucketName,
+              objectName: upload.objectName,
+              contentType: 'application/zip',
+              cacheControl: '3600',
+            },
+            onError: (err) => reject(new Error(`TUS upload failed: ${err.message}`)),
+            onSuccess: () => resolve(),
+          });
+          tusUpload.start();
         });
-        // axios validateStatus already throws on non-2xx, so reaching here = OK
-        void resp;
       } finally {
         stream.destroy();
       }

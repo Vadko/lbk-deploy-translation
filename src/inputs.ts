@@ -33,15 +33,6 @@ const KIND_INPUT: Record<UploadKind, string> = {
   'steam-mac': 'steam-mac',
 };
 
-/** Empty-string-tolerant optional. Strips whitespace, treats '' as undefined. */
-const optionalStr = z.preprocess(
-  (v) => {
-    const s = typeof v === 'string' ? v.trim() : v;
-    return s === '' ? undefined : s;
-  },
-  z.string().optional()
-);
-
 const percent = z.preprocess(
   (v) => (v === undefined || v === '' ? undefined : Number(v)),
   z.number().min(0).max(100).optional()
@@ -55,7 +46,9 @@ const InputsSchema = z.object({
       'expected "lbk_<43-char base64url>" (47 chars total). Get one at /settings.'
     ),
   gameId: z.uuid('expected UUID'),
-  version: z.string().min(1, 'empty string not allowed'),
+  // .trim() before length check so a whitespace-only input is treated as
+  // empty (action.yml uses a default '' so this catches the absence too).
+  version: z.string().trim().min(1, 'version cannot be empty'),
   baseUrl: z.preprocess(
     (v) => (typeof v === 'string' && v ? v.replace(/\/+$/, '') : 'https://admin.lbklauncher.com'),
     z.url()
@@ -69,11 +62,10 @@ const InputsSchema = z.object({
     .or(z.literal('').transform(() => undefined)),
   translationProgress: percent,
   editingProgress: percent,
-  files: z
-    .map(z.enum(UPLOAD_KINDS), z.string().min(1))
-    .refine((m) => m.has('archive'), {
-      message: 'Main `archive` input is required (other kinds — voice/achievements/store-specific — are optional).',
-    }),
+  files: z.map(z.enum(UPLOAD_KINDS), z.string().min(1)).refine((m) => m.has('archive'), {
+    message:
+      'Main `archive` input is required (other kinds — voice/achievements/store-specific — are optional).',
+  }),
 });
 
 export type ActionInputs = z.infer<typeof InputsSchema>;
